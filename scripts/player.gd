@@ -1,46 +1,50 @@
 extends KinematicBody2D
 
-# This is a simple collision demo showing how
-# the kinematic cotroller works.
-# move() will allow to move the node, and will
-# always move it to a non-colliding spot, 
-# as long as it starts from a non-colliding spot too.
-
 # Nodes and scenes
 var global
+var level
 
 # Member variables
 export var id = 1
 export var char = "goblin-brown"
 var dead = false
+var invincible = false
+
+var active_bombs = []
+var collision_exceptions = []
+
 var old_motion = Vector2()
 var anim = "down_idle"
 var new_anim = ""
 
+# Characteristics
+var lives
 var speed = 10
-var max_bombs = 3
+var bomb_quota = 3
 var bomb_range = 2
-var active_bombs = []
-var collision_exceptions = []
 
 func place_bomb():
 	var bomb = global.bomb_scene.instance()
-	bomb.cell_pos = global.world_to_map(self.get_pos())
-	bomb.set_pos(global.map_to_world(bomb.cell_pos))
+	bomb.cell_pos = level.world_to_map(self.get_pos())
+	bomb.set_pos(level.map_to_world(bomb.cell_pos))
 	bomb.player = self
 	bomb.bomb_range = self.bomb_range
 	bomb.get_node("StaticBody2D").add_collision_exception_with(self)
 	self.collision_exceptions.append(bomb)
-	global.bomb_manager.add_child(bomb)
+	level.bomb_manager.add_child(bomb)
 	active_bombs.append(bomb)
 
 func die():
 	set_fixed_process(false)
 	get_node("CharSprite").hide()
 	get_node("AnimationPlayer").play("death")
-	for bomb in global.bomb_manager.get_children():
-		bomb.player = null
-	dead = true
+	lives -= 1
+	if (lives == 0):
+		for bomb in level.bomb_manager.get_children():
+			bomb.player = null
+		dead = true
+	else:
+		get_node("TimerRespawn").start()
 
 func process_movement(delta):
 	var motion = Vector2(0,0)
@@ -85,24 +89,25 @@ func process_movement(delta):
 
 func process_actions():
 	# Drop a bomb on the player's tile
-	if (Input.is_action_pressed(str(id) + "_drop_bomb") and active_bombs.size() < max_bombs):
+	if (Input.is_action_pressed(str(id) + "_drop_bomb") and active_bombs.size() < bomb_quota):
 		for bomb in collision_exceptions:
-			if (bomb.cell_pos == global.world_to_map(self.get_pos())):
+			if (bomb.cell_pos == level.world_to_map(self.get_pos())):
 				return
 		place_bomb()
 
 func process_explosions():
-	for trigger_bomb in global.exploding_bombs:
+	for trigger_bomb in level.exploding_bombs:
 		for bomb in [ trigger_bomb ] + trigger_bomb.chained_bombs:
 			# FIXME: This flame_cells stuff is really getting messy
 			for cell_dict in bomb.flame_cells:
-				if (global.world_to_map(self.get_pos()) == cell_dict.pos):
+				if (level.world_to_map(self.get_pos()) == cell_dict.pos):
 					self.die()
 
 func _fixed_process(delta):
 	process_movement(delta)
 	process_actions()
-	process_explosions()
+	if (not invincible):
+		process_explosions()
 	
 	for bomb in collision_exceptions:
 		if (self.get_pos().x < (bomb.cell_pos.x - 0.5)*global.TILE_SIZE \
@@ -112,13 +117,30 @@ func _fixed_process(delta):
 			bomb.get_node("StaticBody2D").remove_collision_exception_with(self)
 			collision_exceptions.erase(bomb)
 
+func _on_TimerRespawn_timeout():
+	if (not invincible):
+		# Resurrect the player in its original spot as it still has lives
+		set_pos(level.map_to_world(global.PLAYER_DATA[id - 1].tile_pos))
+		get_node("CharSprite").show()
+		set_fixed_process(true)
+		# This variable makes the player invicible after respawning to prevent spawnkilling
+		# The timer is then reused to remove this protection after a while
+		invincible = true
+		get_node("TimerRespawn").start()
+	else:
+		# Remove post-respawn protection
+		invincible = false
+
 func _on_AnimationPlayer_finished():
 	if (dead):
+		# Completely remove this player from the game
 		self.queue_free()
 
 func _ready():
 	# Initialisations
 	global = get_node("/root/global")
+	level = get_node("/root").get_node("Level")
 	get_node("CharSprite").set_sprite_frames(load("res://sprites/" + char + ".xml"))
+	lives = global.nb_lives
 	
 	set_fixed_process(true)
