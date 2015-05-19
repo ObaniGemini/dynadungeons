@@ -43,6 +43,16 @@ func die():
 		for bomb in level.bomb_manager.get_children():
 			bomb.player = null
 		dead = true
+		# If there are only two players when self dies, the other player wins
+		var players = level.player_manager.get_children()
+		if (players.size() == 2):
+			var winner
+			if (self != players[0]):
+				winner = 0
+			else:
+				winner = 1
+			level.get_node("Gameover").get_node("Label").set_text("Player " + str(players[winner].id) + " wins!")
+			level.get_node("Gameover").show()
 	else:
 		get_node("TimerRespawn").start()
 
@@ -98,10 +108,15 @@ func process_actions():
 func process_explosions():
 	for trigger_bomb in level.exploding_bombs:
 		for bomb in [ trigger_bomb ] + trigger_bomb.chained_bombs:
+			# Kill player if he's standing on the bomb
+			if (level.world_to_map(self.get_pos()) == bomb.cell_pos):
+				self.die()
+				return
 			# FIXME: This flame_cells stuff is really getting messy
 			for cell_dict in bomb.flame_cells:
 				if (level.world_to_map(self.get_pos()) == cell_dict.pos):
 					self.die()
+					return
 
 func _fixed_process(delta):
 	process_movement(delta)
