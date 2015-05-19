@@ -4,18 +4,7 @@ extends Control
 var global
 
 func new_game():
-	var level = global.level_scene.instance()
-	get_node("/root").get_node("Menu").queue_free()
-	get_node("/root").add_child(level)
-	OS.set_window_size(Vector2(960,832))
-	
-	var player
-	for i in range(global.nb_players):
-		player = global.player_scene.instance()
-		player.id = i+1
-		player.char = global.PLAYER_DATA[i].char
-		player.set_pos(level.map_to_world(global.PLAYER_DATA[i].tile_pos))
-		level.player_manager.add_child(player)
+	get_tree().change_scene_to(global.level_scene)
 
 func quit():
 	get_tree().quit()
@@ -32,6 +21,15 @@ func goto_settings():
 func goto_controls():
 	goto_screen("Controls")
 
+# Display settings
+
+func settings_set_fullscreen(value):
+	global.fullscreen = value
+	OS.set_window_fullscreen(global.fullscreen)
+	global.save_to_config("display", "fullscreen", value)
+
+# Gameplay settings
+
 func settings_set_players(value):
 	global.nb_players = int(value)
 	get_node("Settings/NbPlayers/Label").set_text("Players: " + str(value))
@@ -45,7 +43,9 @@ func settings_set_lives(value):
 func _ready():
 	global = get_node("/root/global")
 	
-	# Initialisations
+	# Initialise settings widgets
+	get_node("Settings/Fullscreen/CheckBox").set_pressed(global.fullscreen)
+	
 	get_node("Settings/NbPlayers/Slider").set_value(global.nb_players)
 	get_node("Settings/NbPlayers/Label").set_text("Players: " + str(global.nb_players))
 	

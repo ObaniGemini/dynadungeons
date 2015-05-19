@@ -26,7 +26,11 @@ const player_script = preload("res://scripts/player.gd")
 const settings_filename = "user://settings.cfg"
 const inputmap_actions = [ "move_up", "move_down", "move_left", "move_right", "drop_bomb" ]
 
-# Parameters
+# Display parameters
+var display_size = Vector2(960,832)
+var fullscreen = false
+
+# Gameplay parameters
 var nb_players = 2
 var nb_lives = 1
 var collectibles = { 'types': [ "bomb_increase", "flame_increase", "speed_increase", "life_increase" ],
@@ -38,7 +42,13 @@ func load_config():
 	if (err):
 		# TODO: Better error handling
 		# Config file does not exist, dump default settings in it
-		# Parameters
+		
+		# Display parameters
+		config.set_value("display", "width", int(display_size.x))
+		config.set_value("display", "height", int(display_size.y))
+		config.set_value("display", "fullscreen", fullscreen)
+		
+		# Gameplay parameters
 		config.set_value("gameplay", "nb_players", nb_players)
 		config.set_value("gameplay", "nb_lives", nb_lives)
 		
@@ -48,13 +58,17 @@ func load_config():
 			for action in inputmap_actions:
 				action_name = str(i) + "_" + action
 				config.set_value("input", action_name, OS.get_scancode_string(InputMap.get_action_list(action_name)[0].scancode))
-				print(OS.find_scancode_from_string(OS.get_scancode_string(InputMap.get_action_list(action_name)[0].scancode)))
 		
 		config.save(settings_filename)
 	else:
-		# Parameters
-		nb_players = config.get_value("gameplay", "nb_players")
-		nb_lives = config.get_value("gameplay", "nb_lives")
+		# Display parameters
+		set_from_cfg(display_size.x, config, "display", "width")
+		set_from_cfg(display_size.y, config, "display", "height")
+		set_from_cfg(fullscreen, config, "display", "fullscreen")
+		
+		# Gameplay parameters
+		set_from_cfg(nb_players, config, "gameplay", "nb_players")
+		set_from_cfg(nb_lives, config, "gameplay", "nb_lives")
 		
 		# User-defined input overrides
 		var scancode
@@ -68,6 +82,13 @@ func load_config():
 			InputMap.erase_action(action)
 			InputMap.add_action(action)
 			InputMap.action_add_event(action, event)
+
+func set_from_cfg(target, config, section, key):
+	if (config.has_section_key(section, key)):
+		target = config.get_value(section, key)
+	else:
+		print("Warning: '" + key + "' missing from '" + section + "'section in the config file, default value has been added.")
+		save_to_config(section, key, target)
 
 func save_to_config(section, key, value):
 	var config = ConfigFile.new()
@@ -83,6 +104,10 @@ func _ready():
 	randomize()
 	
 	load_config()
+	
+	# Handle display
+	OS.set_window_size(display_size)
+	OS.set_window_fullscreen(fullscreen)
 	
 	collectibles.sum_freq = 0
 	for freq in collectibles.freq:
