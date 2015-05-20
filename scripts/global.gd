@@ -27,7 +27,8 @@ const settings_filename = "user://settings.cfg"
 const inputmap_actions = [ "move_up", "move_down", "move_left", "move_right", "drop_bomb" ]
 
 # Display parameters
-var display_size = Vector2(960,832)
+var width = 960
+var height = 832
 var fullscreen = false
 
 # Audio parameters
@@ -48,8 +49,8 @@ func load_config():
 		# Config file does not exist, dump default settings in it
 		
 		# Display parameters
-		config.set_value("display", "width", int(display_size.x))
-		config.set_value("display", "height", int(display_size.y))
+		config.set_value("display", "width", width)
+		config.set_value("display", "height", height)
 		config.set_value("display", "fullscreen", fullscreen)
 		
 		# Audio parameters
@@ -70,17 +71,17 @@ func load_config():
 		config.save(settings_filename)
 	else:
 		# Display parameters
-		set_from_cfg(display_size.x, config, "display", "width")
-		set_from_cfg(display_size.y, config, "display", "height")
-		set_from_cfg(fullscreen, config, "display", "fullscreen")
+		width = set_from_cfg(config, "display", "width", width)
+		height = set_from_cfg(config, "display", "height", height)
+		fullscreen = set_from_cfg(config, "display", "fullscreen", fullscreen)
 		
 		# Audio parameters
-		set_from_cfg(music, config, "audio", "music")
-		set_from_cfg(sfx, config, "audio", "sfx")
+		music = set_from_cfg(config, "audio", "music", music)
+		sfx = set_from_cfg(config, "audio", "sfx", sfx)
 		
 		# Gameplay parameters
-		set_from_cfg(nb_players, config, "gameplay", "nb_players")
-		set_from_cfg(nb_lives, config, "gameplay", "nb_lives")
+		nb_players = set_from_cfg(config, "gameplay", "nb_players", nb_players)
+		nb_lives = set_from_cfg(config, "gameplay", "nb_lives", nb_lives)
 		
 		# User-defined input overrides
 		var scancode
@@ -95,12 +96,13 @@ func load_config():
 			InputMap.add_action(action)
 			InputMap.action_add_event(action, event)
 
-func set_from_cfg(target, config, section, key):
+func set_from_cfg(config, section, key, fallback):
 	if (config.has_section_key(section, key)):
-		target = config.get_value(section, key)
+		return config.get_value(section, key)
 	else:
 		print("Warning: '" + key + "' missing from '" + section + "'section in the config file, default value has been added.")
-		save_to_config(section, key, target)
+		save_to_config(section, key, fallback)
+		return fallback
 
 func save_to_config(section, key, value):
 	var config = ConfigFile.new()
@@ -118,7 +120,7 @@ func _ready():
 	load_config()
 	
 	# Handle display
-	OS.set_window_size(display_size)
+	OS.set_window_size(Vector2(width, height))
 	OS.set_window_fullscreen(fullscreen)
 	
 	collectibles.sum_freq = 0
