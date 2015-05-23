@@ -138,6 +138,12 @@ func _on_TimerRespawn_timeout():
 		set_pos(level.map_to_world(global.PLAYER_DATA[id - 1].tile_pos))
 		get_node("CharSprite").show()
 		set_fixed_process(true)
+		# If there's a bomb on the spawn tile, add it to the collision exceptions
+		for bomb in level.bomb_manager.get_children():
+			if (bomb.cell_pos == level.world_to_map(self.get_pos())):
+				bomb.get_node("StaticBody2D").add_collision_exception_with(self)
+				collision_exceptions.append(bomb)
+				break
 		# This variable makes the player invicible after respawning to prevent spawnkilling
 		# The timer is then reused to remove this protection after a while
 		invincible = true
