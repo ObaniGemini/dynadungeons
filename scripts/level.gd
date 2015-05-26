@@ -1,6 +1,6 @@
 extends Node2D
 
-# Nodes
+### Nodes
 var global
 var map_manager
 var player_manager
@@ -8,9 +8,12 @@ var bomb_manager
 var collectible_manager
 var tilemap_destr
 var tilemap_indestr
+var tilemap_dummy
 
-# Variables
+### Member variables
 var exploding_bombs = []
+
+### Helper functions
 
 func map_to_world(var map_pos):
 	return tilemap_destr.map_to_world(map_pos) + global.TILE_OFFSET
@@ -18,10 +21,14 @@ func map_to_world(var map_pos):
 func world_to_map(var world_pos):
 	return tilemap_destr.world_to_map(world_pos)
 
+### Input processing
+
 func _input(event):
 	if (Input.is_action_pressed("ui_cancel")):
 		# Quit to main menu
 		get_tree().change_scene_to(global.menu_scene)
+
+### Initialisation
 
 func _ready():
 	# Definitions
@@ -32,6 +39,7 @@ func _ready():
 	collectible_manager = self.get_node("CollectibleManager")
 	tilemap_destr = map_manager.get_node("Destructible")
 	tilemap_indestr = map_manager.get_node("Indestructible")
+	tilemap_dummy = map_manager.get_node("DummyCollider")
 	
 	# Instance players
 	var player

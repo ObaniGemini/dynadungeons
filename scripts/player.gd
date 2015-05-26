@@ -1,10 +1,10 @@
 extends KinematicBody2D
 
-# Nodes and scenes
+### Nodes
 var global
 var level
 
-# Member variables
+### Member variables
 export var id = 1
 export var char = "goblin-brown"
 var dead = false
@@ -17,11 +17,13 @@ var old_motion = Vector2()
 var anim = "down_idle"
 var new_anim = ""
 
-# Characteristics
+### Characteristics
 var lives
 var speed = 10
 var bomb_quota = 3
 var bomb_range = 2
+
+### Actions
 
 func place_bomb():
 	var bomb = global.bomb_scene.instance()
@@ -29,15 +31,17 @@ func place_bomb():
 	bomb.set_pos(level.map_to_world(bomb.cell_pos))
 	bomb.player = self
 	bomb.bomb_range = self.bomb_range
-	bomb.get_node("StaticBody2D").add_collision_exception_with(self)
-	self.collision_exceptions.append(bomb)
+	for player in level.player_manager.get_children():
+		if (level.world_to_map(player.get_pos()) == bomb.cell_pos):
+			bomb.get_node("StaticBody2D").add_collision_exception_with(player)
+			player.collision_exceptions.append(bomb)
 	level.bomb_manager.add_child(bomb)
 	active_bombs.append(bomb)
 
 func die():
 	set_fixed_process(false)
 	get_node("CharSprite").hide()
-	get_node("AnimationPlayer").play("death")
+	get_node("ActionAnimations").play("death")
 	lives -= 1
 	if (lives == 0):
 		for bomb in level.bomb_manager.get_children():
@@ -55,6 +59,8 @@ func die():
 			level.get_node("Gameover").show()
 	else:
 		get_node("TimerRespawn").start()
+
+### Process
 
 func process_movement(delta):
 	var motion = Vector2(0,0)
@@ -95,7 +101,7 @@ func process_movement(delta):
 	
 	if (new_anim != anim):
 		anim = new_anim
-		get_node("AnimationPlayer").play(anim)
+		get_node("ActionAnimations").play(anim)
 
 func process_actions():
 	# Drop a bomb on the player's tile
@@ -132,6 +138,8 @@ func _fixed_process(delta):
 			bomb.get_node("StaticBody2D").remove_collision_exception_with(self)
 			collision_exceptions.erase(bomb)
 
+### Signals
+
 func _on_TimerRespawn_timeout():
 	if (not invincible):
 		# Resurrect the player in its original spot as it still has lives
@@ -148,17 +156,21 @@ func _on_TimerRespawn_timeout():
 		# The timer is then reused to remove this protection after a while
 		invincible = true
 		get_node("TimerRespawn").start()
+		get_node("StatusAnimations").get_animation("blink").set_loop(true)
+		get_node("StatusAnimations").play("blink")
 	else:
 		# Remove post-respawn protection
 		invincible = false
+		get_node("StatusAnimations").get_animation("blink").set_loop(false)
 
-func _on_AnimationPlayer_finished():
+func _on_ActionAnimations_finished():
 	if (dead):
 		# Completely remove this player from the game
 		self.queue_free()
 
+### Initialisation
+
 func _ready():
-	# Initialisations
 	global = get_node("/root/global")
 	level = get_node("/root").get_node("Level")
 	get_node("CharSprite").set_sprite_frames(load("res://sprites/" + char + ".xml"))
